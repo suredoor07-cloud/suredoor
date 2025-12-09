@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Plus, Search, Trash2, Eye, Upload, X, Image as ImageIcon, Loader2 } from 'lucide-react'
-import { galleryService, GalleryImage } from '@/lib/supabase'
+import { galleryService, storageService, GalleryImage } from '@/lib/supabase'
 
 const categories = ['All', 'Events', 'Programs', 'Team', 'Community']
 
@@ -15,6 +15,9 @@ export default function GalleryManagement() {
   const [selectedImage, setSelectedImage] = useState<GalleryImage | null>(null)
   const [isUploading, setIsUploading] = useState(false)
   const [newImage, setNewImage] = useState({ title: '', image_url: '', category: 'Events', description: '' })
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [previewUrl, setPreviewUrl] = useState<string>('')
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     loadImages()
@@ -49,28 +52,68 @@ export default function GalleryManagement() {
     }
   }
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        alert('Please select an image file')
+        return
+      }
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        alert('File size must be less than 5MB')
+        return
+      }
+      setSelectedFile(file)
+      setPreviewUrl(URL.createObjectURL(file))
+      setNewImage(prev => ({ ...prev, image_url: '' })) // Clear URL if file is selected
+    }
+  }
+
   const handleUpload = async () => {
-    if (!newImage.title || !newImage.image_url) {
-      alert('Please enter a title and image URL')
+    if (!newImage.title) {
+      alert('Please enter a title')
+      return
+    }
+    
+    if (!selectedFile && !newImage.image_url) {
+      alert('Please select an image file or enter an image URL')
       return
     }
     
     setIsUploading(true)
     try {
+      let imageUrl = newImage.image_url
+
+      // Upload file to Supabase Storage if a file is selected
+      if (selectedFile) {
+        imageUrl = await storageService.uploadImage(selectedFile, 'gallery')
+      }
+
       const created = await galleryService.create({
         title: newImage.title,
-        image_url: newImage.image_url,
+        image_url: imageUrl,
         category: newImage.category,
         description: newImage.description,
       })
       setImages([created, ...images])
-      setShowUploadModal(false)
-      setNewImage({ title: '', image_url: '', category: 'Events', description: '' })
+      closeUploadModal()
     } catch (error) {
       console.error('Error uploading image:', error)
-      alert('Error uploading image. Please try again.')
+      alert('Error uploading image. Please check that Supabase Storage is configured correctly.')
     } finally {
       setIsUploading(false)
+    }
+  }
+
+  const closeUploadModal = () => {
+    setShowUploadModal(false)
+    setNewImage({ title: '', image_url: '', category: 'Events', description: '' })
+    setSelectedFile(null)
+    setPreviewUrl('')
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
     }
   }
 
@@ -172,21 +215,51 @@ export default function GalleryManagement() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
           <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold text-gray-900">Upload Images</h3>
+              <h3 className="text-xl font-bold text-gray-900">Upload Image</h3>
               <button
-                onClick={() => setShowUploadModal(false)}
+                onClick={closeUploadModal}
                 className="text-gray-400 hover:text-gray-600"
               >
                 <X className="w-6 h-6" />
               </button>
             </div>
             
-            <div className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center mb-6">
-              <Upload className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500 mb-2">Drag and drop images here, or</p>
-              <button className="text-primary-600 hover:text-primary-700 font-medium">
-                Browse files
-              </button>
+            {/* File Upload Area */}
+            <div 
+              className="border-2 border-dashed border-gray-200 rounded-xl p-6 text-center mb-6 cursor-pointer hover:border-primary-400 transition-colors"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleFileSelect}
+                className="hidden"
+              />
+              {previewUrl ? (
+                <div className="relative">
+                  <img src={previewUrl} alt="Preview" className="max-h-40 mx-auto rounded-lg" />
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setSelectedFile(null)
+                      setPreviewUrl('')
+                      if (fileInputRef.current) fileInputRef.current.value = ''
+                    }}
+                    className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                  <p className="text-sm text-gray-500 mt-2">{selectedFile?.name}</p>
+                </div>
+              ) : (
+                <>
+                  <Upload className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                  <p className="text-gray-500 mb-2">Click to select an image</p>
+                  <p className="text-xs text-gray-400">PNG, JPG, GIF up to 5MB</p>
+                </>
+              )}
             </div>
 
             <div className="space-y-4">
@@ -200,16 +273,20 @@ export default function GalleryManagement() {
                   placeholder="Image title"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Image URL *</label>
-                <input
-                  type="url"
-                  value={newImage.image_url}
-                  onChange={(e) => setNewImage({ ...newImage, image_url: e.target.value })}
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  placeholder="https://example.com/image.jpg"
-                />
-              </div>
+              {!selectedFile && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Or paste Image URL
+                  </label>
+                  <input
+                    type="url"
+                    value={newImage.image_url}
+                    onChange={(e) => setNewImage({ ...newImage, image_url: e.target.value })}
+                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    placeholder="https://example.com/image.jpg"
+                  />
+                </div>
+              )}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
                 <select 
@@ -226,7 +303,7 @@ export default function GalleryManagement() {
 
             <div className="flex gap-3 mt-6">
               <button
-                onClick={() => setShowUploadModal(false)}
+                onClick={closeUploadModal}
                 className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl text-gray-700 hover:bg-gray-50 transition-colors"
               >
                 Cancel

@@ -293,3 +293,47 @@ export const donationsService = {
     return data[0] as Donation
   }
 }
+
+// ============ STORAGE SERVICE ============
+
+export const storageService = {
+  async uploadImage(file: File, bucket: string = 'gallery') {
+    const fileExt = file.name.split('.').pop()
+    const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`
+    const filePath = `${fileName}`
+
+    const { data, error } = await supabase.storage
+      .from(bucket)
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: false
+      })
+
+    if (error) throw error
+
+    // Get public URL
+    const { data: urlData } = supabase.storage
+      .from(bucket)
+      .getPublicUrl(filePath)
+
+    return urlData.publicUrl
+  },
+
+  async deleteImage(url: string, bucket: string = 'gallery') {
+    // Extract file path from URL
+    const urlParts = url.split(`${bucket}/`)
+    if (urlParts.length < 2) return
+    
+    const filePath = urlParts[1]
+    const { error } = await supabase.storage
+      .from(bucket)
+      .remove([filePath])
+
+    if (error) throw error
+  },
+
+  getPublicUrl(path: string, bucket: string = 'gallery') {
+    const { data } = supabase.storage.from(bucket).getPublicUrl(path)
+    return data.publicUrl
+  }
+}
