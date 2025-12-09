@@ -1,21 +1,44 @@
 'use client'
 
-import { useState } from 'react'
-import { Save, Globe, Mail, Phone, MapPin, Facebook, Twitter, Instagram, Youtube } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Save, Globe, Mail, Phone, MapPin, Facebook, Twitter, Instagram, Youtube, Loader2 } from 'lucide-react'
+import { settingsService } from '@/lib/supabase'
 
 export default function SettingsPage() {
   const [isSaving, setIsSaving] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
   const [settings, setSettings] = useState({
-    siteName: 'Suredoor International Centre for Research and Rehabilitation',
-    siteDescription: 'A humanitarian body dedicated to restoring the dignity of man',
-    contactEmail: 'info@suredoorintl.org.ng',
-    contactPhone: '+234 000 000 0000',
+    site_name: 'Suredoor International Centre for Research and Rehabilitation',
+    site_description: 'A humanitarian body dedicated to restoring the dignity of man',
+    contact_email: 'info@suredoorintl.org.ng',
+    contact_phone: '+234 000 000 0000',
     address: 'Lagos State, Nigeria',
-    facebookUrl: '',
-    twitterUrl: '',
-    instagramUrl: '',
-    youtubeUrl: '',
+    facebook_url: '',
+    twitter_url: '',
+    instagram_url: '',
+    youtube_url: '',
   })
+
+  useEffect(() => {
+    loadSettings()
+  }, [])
+
+  const loadSettings = async () => {
+    try {
+      const data = await settingsService.getAll()
+      if (data && data.length > 0) {
+        const settingsObj: Record<string, string> = {}
+        data.forEach(item => {
+          settingsObj[item.key] = item.value || ''
+        })
+        setSettings(prev => ({ ...prev, ...settingsObj }))
+      }
+    } catch (error) {
+      console.error('Error loading settings:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setSettings(prev => ({
@@ -26,10 +49,26 @@ export default function SettingsPage() {
 
   const handleSave = async () => {
     setIsSaving(true)
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    setIsSaving(false)
-    alert('Settings saved successfully!')
+    try {
+      // Save each setting to Supabase
+      for (const [key, value] of Object.entries(settings)) {
+        await settingsService.update(key, value)
+      }
+      alert('Settings saved successfully!')
+    } catch (error) {
+      console.error('Error saving settings:', error)
+      alert('Error saving settings. Please try again.')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
+      </div>
+    )
   }
 
   return (
@@ -76,9 +115,9 @@ export default function SettingsPage() {
             </label>
             <input
               type="text"
-              id="siteName"
-              name="siteName"
-              value={settings.siteName}
+              id="site_name"
+              name="site_name"
+              value={settings.site_name}
               onChange={handleChange}
               className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
             />
@@ -89,9 +128,9 @@ export default function SettingsPage() {
               Site Description
             </label>
             <textarea
-              id="siteDescription"
-              name="siteDescription"
-              value={settings.siteDescription}
+              id="site_description"
+              name="site_description"
+              value={settings.site_description}
               onChange={handleChange}
               rows={3}
               className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
@@ -115,9 +154,9 @@ export default function SettingsPage() {
             </label>
             <input
               type="email"
-              id="contactEmail"
-              name="contactEmail"
-              value={settings.contactEmail}
+              id="contact_email"
+              name="contact_email"
+              value={settings.contact_email}
               onChange={handleChange}
               className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
             />
@@ -130,9 +169,9 @@ export default function SettingsPage() {
             </label>
             <input
               type="text"
-              id="contactPhone"
-              name="contactPhone"
-              value={settings.contactPhone}
+              id="contact_phone"
+              name="contact_phone"
+              value={settings.contact_phone}
               onChange={handleChange}
               className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
             />
@@ -169,9 +208,9 @@ export default function SettingsPage() {
             </label>
             <input
               type="url"
-              id="facebookUrl"
-              name="facebookUrl"
-              value={settings.facebookUrl}
+              id="facebook_url"
+              name="facebook_url"
+              value={settings.facebook_url}
               onChange={handleChange}
               placeholder="https://facebook.com/..."
               className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
@@ -185,9 +224,9 @@ export default function SettingsPage() {
             </label>
             <input
               type="url"
-              id="twitterUrl"
-              name="twitterUrl"
-              value={settings.twitterUrl}
+              id="twitter_url"
+              name="twitter_url"
+              value={settings.twitter_url}
               onChange={handleChange}
               placeholder="https://twitter.com/..."
               className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
@@ -201,9 +240,9 @@ export default function SettingsPage() {
             </label>
             <input
               type="url"
-              id="instagramUrl"
-              name="instagramUrl"
-              value={settings.instagramUrl}
+              id="instagram_url"
+              name="instagram_url"
+              value={settings.instagram_url}
               onChange={handleChange}
               placeholder="https://instagram.com/..."
               className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
@@ -217,9 +256,9 @@ export default function SettingsPage() {
             </label>
             <input
               type="url"
-              id="youtubeUrl"
-              name="youtubeUrl"
-              value={settings.youtubeUrl}
+              id="youtube_url"
+              name="youtube_url"
+              value={settings.youtube_url}
               onChange={handleChange}
               placeholder="https://youtube.com/..."
               className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"

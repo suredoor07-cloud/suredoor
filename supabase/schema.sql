@@ -190,6 +190,15 @@ CREATE POLICY "Public can submit contact messages" ON contact_messages
 CREATE POLICY "Public can subscribe to newsletter" ON newsletter_subscribers
     FOR INSERT WITH CHECK (true);
 
--- Note: For admin access, you'll need to set up authentication
--- and create policies that allow authenticated users with admin role
--- to perform all operations on these tables.
+-- Allow all operations for now (development mode)
+-- In production, you should restrict these to authenticated admin users
+
+CREATE POLICY "Allow all on blog_posts" ON blog_posts FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all on programs" ON programs FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all on events" ON events FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all on donations" ON donations FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all on contact_messages" ON contact_messages FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all on team_members" ON team_members FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all on gallery_images" ON gallery_images FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all on newsletter_subscribers" ON newsletter_subscribers FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all on site_settings" ON site_settings FOR ALL USING (true) WITH CHECK (true);

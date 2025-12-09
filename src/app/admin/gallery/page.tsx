@@ -1,61 +1,35 @@
 'use client'
 
-import { useState } from 'react'
-import { Plus, Search, Trash2, Eye, Upload, X, Image as ImageIcon } from 'lucide-react'
-
-const initialImages = [
-  {
-    id: '1',
-    title: 'Community Outreach 2024',
-    category: 'Events',
-    url: 'https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?w=400',
-    date: '2024-12-01',
-  },
-  {
-    id: '2',
-    title: 'Youth Empowerment Workshop',
-    category: 'Programs',
-    url: 'https://images.unsplash.com/photo-1529390079861-591de354faf5?w=400',
-    date: '2024-11-15',
-  },
-  {
-    id: '3',
-    title: 'Women Health Seminar',
-    category: 'Programs',
-    url: 'https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=400',
-    date: '2024-11-01',
-  },
-  {
-    id: '4',
-    title: 'Team Meeting',
-    category: 'Team',
-    url: 'https://images.unsplash.com/photo-1559027615-cd4628902d4a?w=400',
-    date: '2024-10-20',
-  },
-  {
-    id: '5',
-    title: 'Donation Drive',
-    category: 'Events',
-    url: 'https://images.unsplash.com/photo-1532629345422-7515f3d16bb6?w=400',
-    date: '2024-10-15',
-  },
-  {
-    id: '6',
-    title: 'Skills Training',
-    category: 'Programs',
-    url: 'https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=400',
-    date: '2024-10-10',
-  },
-]
+import { useState, useEffect } from 'react'
+import { Plus, Search, Trash2, Eye, Upload, X, Image as ImageIcon, Loader2 } from 'lucide-react'
+import { galleryService, GalleryImage } from '@/lib/supabase'
 
 const categories = ['All', 'Events', 'Programs', 'Team', 'Community']
 
 export default function GalleryManagement() {
-  const [images, setImages] = useState(initialImages)
+  const [images, setImages] = useState<GalleryImage[]>([])
+  const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [filterCategory, setFilterCategory] = useState('All')
   const [showUploadModal, setShowUploadModal] = useState(false)
-  const [selectedImage, setSelectedImage] = useState<typeof initialImages[0] | null>(null)
+  const [selectedImage, setSelectedImage] = useState<GalleryImage | null>(null)
+  const [isUploading, setIsUploading] = useState(false)
+  const [newImage, setNewImage] = useState({ title: '', image_url: '', category: 'Events', description: '' })
+
+  useEffect(() => {
+    loadImages()
+  }, [])
+
+  const loadImages = async () => {
+    try {
+      const data = await galleryService.getAll()
+      setImages(data || [])
+    } catch (error) {
+      console.error('Error loading images:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   const filteredImages = images.filter(img => {
     const matchesSearch = img.title.toLowerCase().includes(searchQuery.toLowerCase())
@@ -63,10 +37,49 @@ export default function GalleryManagement() {
     return matchesSearch && matchesCategory
   })
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm('Are you sure you want to delete this image?')) {
-      setImages(images.filter(img => img.id !== id))
+      try {
+        await galleryService.delete(id)
+        setImages(images.filter(img => img.id !== id))
+      } catch (error) {
+        console.error('Error deleting image:', error)
+        alert('Error deleting image')
+      }
     }
+  }
+
+  const handleUpload = async () => {
+    if (!newImage.title || !newImage.image_url) {
+      alert('Please enter a title and image URL')
+      return
+    }
+    
+    setIsUploading(true)
+    try {
+      const created = await galleryService.create({
+        title: newImage.title,
+        image_url: newImage.image_url,
+        category: newImage.category,
+        description: newImage.description,
+      })
+      setImages([created, ...images])
+      setShowUploadModal(false)
+      setNewImage({ title: '', image_url: '', category: 'Events', description: '' })
+    } catch (error) {
+      console.error('Error uploading image:', error)
+      alert('Error uploading image. Please try again.')
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
+      </div>
+    )
   }
 
   return (
@@ -120,7 +133,7 @@ export default function GalleryManagement() {
           >
             <div className="relative aspect-square">
               <img
-                src={image.url}
+                src={image.image_url}
                 alt={image.title}
                 className="w-full h-full object-cover"
               />
@@ -178,16 +191,32 @@ export default function GalleryManagement() {
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Title</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Title *</label>
                 <input
                   type="text"
+                  value={newImage.title}
+                  onChange={(e) => setNewImage({ ...newImage, title: e.target.value })}
                   className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500"
                   placeholder="Image title"
                 />
               </div>
               <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Image URL *</label>
+                <input
+                  type="url"
+                  value={newImage.image_url}
+                  onChange={(e) => setNewImage({ ...newImage, image_url: e.target.value })}
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  placeholder="https://example.com/image.jpg"
+                />
+              </div>
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
-                <select className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500">
+                <select 
+                  value={newImage.category}
+                  onChange={(e) => setNewImage({ ...newImage, category: e.target.value })}
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                >
                   {categories.filter(c => c !== 'All').map(cat => (
                     <option key={cat} value={cat}>{cat}</option>
                   ))}
@@ -203,10 +232,11 @@ export default function GalleryManagement() {
                 Cancel
               </button>
               <button
-                onClick={() => setShowUploadModal(false)}
-                className="flex-1 px-4 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-xl transition-colors"
+                onClick={handleUpload}
+                disabled={isUploading}
+                className="flex-1 px-4 py-2.5 bg-primary-600 hover:bg-primary-700 disabled:bg-primary-400 text-white rounded-xl transition-colors"
               >
-                Upload
+                {isUploading ? 'Uploading...' : 'Add Image'}
               </button>
             </div>
           </div>
@@ -223,7 +253,7 @@ export default function GalleryManagement() {
             <X className="w-8 h-8" />
           </button>
           <img
-            src={selectedImage.url}
+            src={selectedImage.image_url}
             alt={selectedImage.title}
             className="max-w-full max-h-[80vh] rounded-lg"
           />
