@@ -1,78 +1,36 @@
+'use client'
+
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Calendar, User, ArrowRight, Tag } from 'lucide-react'
-
-export const metadata = {
-  title: 'Blog & News - Suredoor International',
-  description: 'Stay updated with the latest news, stories, and updates from Suredoor International.',
-}
-
-// Sample blog posts - in production, these would come from Supabase
-const blogPosts = [
-  {
-    id: '1',
-    slug: 'community-outreach-2024',
-    title: 'Annual Community Outreach Program 2024',
-    excerpt: 'Our annual community outreach program brought hope and resources to over 500 families in underserved communities across Lagos State.',
-    author: 'Admin',
-    category: 'Events',
-    date: '2024-12-01',
-    image: '/images/blog/outreach.jpg',
-  },
-  {
-    id: '2',
-    slug: 'youth-empowerment-success',
-    title: 'Youth Empowerment: 50 Graduates Complete Skill Training',
-    excerpt: 'Celebrating the successful completion of our skill acquisition program by 50 young people who are now equipped for self-employment.',
-    author: 'Admin',
-    category: 'Success Stories',
-    date: '2024-11-15',
-    image: '/images/blog/youth.jpg',
-  },
-  {
-    id: '3',
-    slug: 'women-health-seminar',
-    title: 'Women\'s Health Seminar Reaches 200 Participants',
-    excerpt: 'Our Women Department organized a comprehensive health seminar focusing on reproductive health and family wellness.',
-    author: 'Admin',
-    category: 'Programs',
-    date: '2024-11-01',
-    image: '/images/blog/women.jpg',
-  },
-  {
-    id: '4',
-    slug: 'partnership-announcement',
-    title: 'New Partnership with Lagos State Government',
-    excerpt: 'We are excited to announce a new partnership with the Lagos State Ministry of Youth and Social Development.',
-    author: 'Admin',
-    category: 'Announcements',
-    date: '2024-10-20',
-    image: '/images/blog/partnership.jpg',
-  },
-  {
-    id: '5',
-    slug: 'donation-drive-success',
-    title: 'Donation Drive Exceeds Target',
-    excerpt: 'Thanks to our generous donors, we exceeded our fundraising target and will be able to expand our programs.',
-    author: 'Admin',
-    category: 'Fundraising',
-    date: '2024-10-10',
-    image: '/images/blog/donation.jpg',
-  },
-  {
-    id: '6',
-    slug: 'volunteer-spotlight',
-    title: 'Volunteer Spotlight: Meet Our Dedicated Team',
-    excerpt: 'Highlighting the incredible volunteers who make our work possible through their dedication and service.',
-    author: 'Admin',
-    category: 'Community',
-    date: '2024-09-25',
-    image: '/images/blog/volunteers.jpg',
-  },
-]
+import { Calendar, User, ArrowRight, Tag, Loader2 } from 'lucide-react'
+import { blogService, BlogPost } from '@/lib/supabase'
 
 const categories = ['All', 'Events', 'Success Stories', 'Programs', 'Announcements', 'Fundraising', 'Community']
 
 export default function BlogPage() {
+  const [blogPosts, setBlogPosts] = useState<BlogPost[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [selectedCategory, setSelectedCategory] = useState('All')
+
+  useEffect(() => {
+    loadPosts()
+  }, [])
+
+  const loadPosts = async () => {
+    try {
+      const data = await blogService.getPublished()
+      setBlogPosts(data || [])
+    } catch (error) {
+      console.error('Error loading blog posts:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const filteredPosts = selectedCategory === 'All'
+    ? blogPosts
+    : blogPosts.filter(post => post.category === selectedCategory)
+
   return (
     <>
       {/* Hero Section */}
@@ -100,8 +58,9 @@ export default function BlogPage() {
             {categories.map((category) => (
               <button
                 key={category}
+                onClick={() => setSelectedCategory(category)}
                 className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                  category === 'All'
+                  selectedCategory === category
                     ? 'bg-primary-600 text-white'
                     : 'bg-gray-100 text-gray-700 hover:bg-primary-100 hover:text-primary-700'
                 }`}
@@ -116,72 +75,73 @@ export default function BlogPage() {
       {/* Blog Posts Grid */}
       <section className="section-padding bg-gray-50">
         <div className="container-custom">
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {blogPosts.map((post) => (
-              <article
-                key={post.id}
-                className="bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 group"
-              >
-                <div className="h-48 bg-gradient-to-br from-primary-600 to-primary-800 flex items-center justify-center">
-                  <span className="text-white/30 text-6xl font-bold">S</span>
-                </div>
-                <div className="p-6">
-                  <div className="flex items-center gap-4 text-sm text-gray-500 mb-4">
-                    <div className="flex items-center gap-1">
-                      <Calendar className="w-4 h-4" />
-                      {new Date(post.date).toLocaleDateString('en-US', {
-                        year: 'numeric',
-                        month: 'short',
-                        day: 'numeric',
-                      })}
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Tag className="w-4 h-4" />
-                      {post.category}
-                    </div>
-                  </div>
-                  <h2 className="text-xl font-bold text-gray-900 mb-3 group-hover:text-primary-600 transition-colors line-clamp-2">
-                    {post.title}
-                  </h2>
-                  <p className="text-gray-600 text-sm leading-relaxed mb-4 line-clamp-3">
-                    {post.excerpt}
-                  </p>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-sm text-gray-500">
-                      <User className="w-4 h-4" />
-                      {post.author}
-                    </div>
-                    <Link
-                      href={`/blog/${post.slug}`}
-                      className="inline-flex items-center gap-1 text-primary-600 hover:text-primary-700 font-medium text-sm transition-colors"
-                    >
-                      Read More
-                      <ArrowRight className="w-4 h-4" />
-                    </Link>
-                  </div>
-                </div>
-              </article>
-            ))}
-          </div>
-
-          {/* Pagination */}
-          <div className="flex justify-center mt-12">
-            <div className="flex items-center gap-2">
-              <button className="w-10 h-10 rounded-full bg-primary-600 text-white font-medium">
-                1
-              </button>
-              <button className="w-10 h-10 rounded-full bg-gray-100 text-gray-700 hover:bg-primary-100 font-medium transition-colors">
-                2
-              </button>
-              <button className="w-10 h-10 rounded-full bg-gray-100 text-gray-700 hover:bg-primary-100 font-medium transition-colors">
-                3
-              </button>
-              <span className="px-2 text-gray-500">...</span>
-              <button className="w-10 h-10 rounded-full bg-gray-100 text-gray-700 hover:bg-primary-100 font-medium transition-colors">
-                10
-              </button>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-16">
+              <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
             </div>
-          </div>
+          ) : filteredPosts.length > 0 ? (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {filteredPosts.map((post) => (
+                <article
+                  key={post.id}
+                  className="bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 group"
+                >
+                  {post.featured_image ? (
+                    <img 
+                      src={post.featured_image} 
+                      alt={post.title}
+                      className="h-48 w-full object-cover"
+                    />
+                  ) : (
+                    <div className="h-48 bg-gradient-to-br from-primary-600 to-primary-800 flex items-center justify-center">
+                      <span className="text-white/30 text-6xl font-bold">S</span>
+                    </div>
+                  )}
+                  <div className="p-6">
+                    <div className="flex items-center gap-4 text-sm text-gray-500 mb-4">
+                      <div className="flex items-center gap-1">
+                        <Calendar className="w-4 h-4" />
+                        {new Date(post.created_at).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric',
+                        })}
+                      </div>
+                      {post.category && (
+                        <div className="flex items-center gap-1">
+                          <Tag className="w-4 h-4" />
+                          {post.category}
+                        </div>
+                      )}
+                    </div>
+                    <h2 className="text-xl font-bold text-gray-900 mb-3 group-hover:text-primary-600 transition-colors line-clamp-2">
+                      {post.title}
+                    </h2>
+                    <p className="text-gray-600 text-sm leading-relaxed mb-4 line-clamp-3">
+                      {post.excerpt}
+                    </p>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-sm text-gray-500">
+                        <User className="w-4 h-4" />
+                        {post.author || 'Admin'}
+                      </div>
+                      <Link
+                        href={`/blog/${post.slug}`}
+                        className="inline-flex items-center gap-1 text-primary-600 hover:text-primary-700 font-medium text-sm transition-colors"
+                      >
+                        Read More
+                        <ArrowRight className="w-4 h-4" />
+                      </Link>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-16">
+              <p className="text-gray-500">No blog posts found.</p>
+            </div>
+          )}
         </div>
       </section>
 

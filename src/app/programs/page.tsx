@@ -1,12 +1,28 @@
-import Link from 'next/link'
-import { ArrowRight, BookOpen, Heart, Users, Target, Lightbulb, HandHeart, GraduationCap } from 'lucide-react'
+'use client'
 
-export const metadata = {
-  title: 'Our Programs - Suredoor International',
-  description: 'Explore our comprehensive programs across Public Enlightenment, Women Empowerment, and Youth Development departments.',
-}
+import { useState, useEffect } from 'react'
+import Link from 'next/link'
+import { ArrowRight, BookOpen, Heart, Users, Target, Lightbulb, HandHeart, GraduationCap, Loader2 } from 'lucide-react'
+import { programsService, Program } from '@/lib/supabase'
 
 export default function ProgramsPage() {
+  const [programs, setPrograms] = useState<Program[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    loadPrograms()
+  }, [])
+
+  const loadPrograms = async () => {
+    try {
+      const data = await programsService.getActive()
+      setPrograms(data || [])
+    } catch (error) {
+      console.error('Error loading programs:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
   const departments = [
     {
       title: 'Public Enlightenment Department',
@@ -144,6 +160,56 @@ export default function ProgramsPage() {
           </div>
         </div>
       </section>
+
+      {/* Dynamic Programs from Database */}
+      {programs.length > 0 && (
+        <section className="section-padding bg-white border-t">
+          <div className="container-custom">
+            <div className="text-center max-w-3xl mx-auto mb-16">
+              <h2 className="heading-primary mb-6">Active Programs</h2>
+              <p className="text-gray-600 text-lg">
+                Explore our current programs and initiatives making a difference in communities.
+              </p>
+            </div>
+            
+            {isLoading ? (
+              <div className="flex items-center justify-center py-16">
+                <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
+              </div>
+            ) : (
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {programs.map((program) => (
+                  <div key={program.id} className="bg-gray-50 rounded-2xl p-6 hover:shadow-lg transition-all">
+                    {program.image && (
+                      <img 
+                        src={program.image} 
+                        alt={program.title}
+                        className="w-full h-48 object-cover rounded-xl mb-4"
+                      />
+                    )}
+                    <div className={`inline-flex px-3 py-1 rounded-full text-xs font-medium mb-3 ${
+                      program.department === 'public_enlightenment' ? 'bg-blue-100 text-blue-700' :
+                      program.department === 'women' ? 'bg-pink-100 text-pink-700' :
+                      'bg-purple-100 text-purple-700'
+                    }`}>
+                      {program.department === 'public_enlightenment' ? 'Public Enlightenment' :
+                       program.department === 'women' ? 'Women' : 'Youth'}
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-900 mb-3">{program.title}</h3>
+                    <p className="text-gray-600 text-sm mb-4 line-clamp-3">{program.description}</p>
+                    <Link
+                      href={`/programs/${program.slug}`}
+                      className="inline-flex items-center gap-1 text-primary-600 hover:text-primary-700 font-medium text-sm"
+                    >
+                      Learn More <ArrowRight className="w-4 h-4" />
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+      )}
 
       {/* Proposed Projects Section */}
       <section className="section-padding bg-gray-50">

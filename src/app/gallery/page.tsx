@@ -1,90 +1,32 @@
 'use client'
 
-import { useState } from 'react'
-import { X, ChevronLeft, ChevronRight } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { X, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'
+import { galleryService, GalleryImage } from '@/lib/supabase'
 
-// Sample gallery data - in production, this would come from Supabase
-const galleryImages = [
-  {
-    id: '1',
-    title: 'Interactive Session with V.I.O Officers',
-    description: 'An interactive section with V.I.O Officers at their Head Quarter, Lagos State Secretariat Alausa, Ikeja Lagos.',
-    category: 'Outreach',
-  },
-  {
-    id: '2',
-    title: 'Traffic Document Presentation',
-    description: 'Presentation of Traffic Document by Lagos State Vehicle Inspection Officer at the Lagos State Secretariat Headquarters, Alausa Ikeja.',
-    category: 'Outreach',
-  },
-  {
-    id: '3',
-    title: 'Red Cross Motherless Babies Home Visit',
-    description: 'Group photograph with the Administrative Officer of Red Cross Motherless Babies Home (Mrs Gloria Chiekwe) and her Staff at No 2 Makoko Road, Yaba.',
-    category: 'Donations',
-  },
-  {
-    id: '4',
-    title: 'Donation to Motherless Babies Home',
-    description: 'Presentation of items to Matron of the Motherless Babies Home.',
-    category: 'Donations',
-  },
-  {
-    id: '5',
-    title: 'Manza Village Outreach',
-    description: 'Donation of items to people of Manza Village in Jos North East Local Government Area of Plateau State.',
-    category: 'Donations',
-  },
-  {
-    id: '6',
-    title: 'Radio Lagos Visit',
-    description: 'Group photograph with Radio Lagos Management Staff.',
-    category: 'Partnerships',
-  },
-  {
-    id: '7',
-    title: 'Lagos State Art Council',
-    description: 'Group photograph with Lagos State Art Council Management Staff.',
-    category: 'Partnerships',
-  },
-  {
-    id: '8',
-    title: 'Community Outreach Program',
-    description: 'Team members during a community outreach program.',
-    category: 'Programs',
-  },
-  {
-    id: '9',
-    title: 'Youth Empowerment Workshop',
-    description: 'Participants at our youth empowerment workshop.',
-    category: 'Programs',
-  },
-  {
-    id: '10',
-    title: 'Women Health Seminar',
-    description: 'Women attending our health education seminar.',
-    category: 'Programs',
-  },
-  {
-    id: '11',
-    title: 'Skill Acquisition Training',
-    description: 'Youth participants in skill acquisition training program.',
-    category: 'Training',
-  },
-  {
-    id: '12',
-    title: 'Peace Forum Event',
-    description: 'Participants at the Peace Forum organized for youth.',
-    category: 'Events',
-  },
-]
-
-const categories = ['All', 'Outreach', 'Donations', 'Partnerships', 'Programs', 'Training', 'Events']
+const categories = ['All', 'Events', 'Programs', 'Team', 'Community']
 
 export default function GalleryPage() {
+  const [galleryImages, setGalleryImages] = useState<GalleryImage[]>([])
+  const [isLoading, setIsLoading] = useState(true)
   const [selectedCategory, setSelectedCategory] = useState('All')
-  const [selectedImage, setSelectedImage] = useState<typeof galleryImages[0] | null>(null)
+  const [selectedImage, setSelectedImage] = useState<GalleryImage | null>(null)
   const [currentIndex, setCurrentIndex] = useState(0)
+
+  useEffect(() => {
+    loadImages()
+  }, [])
+
+  const loadImages = async () => {
+    try {
+      const data = await galleryService.getAll()
+      setGalleryImages(data || [])
+    } catch (error) {
+      console.error('Error loading gallery:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   const filteredImages = selectedCategory === 'All'
     ? galleryImages
@@ -155,30 +97,43 @@ export default function GalleryPage() {
       {/* Gallery Grid */}
       <section className="section-padding bg-gray-50">
         <div className="container-custom">
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {filteredImages.map((image, index) => (
-              <div
-                key={image.id}
-                onClick={() => openLightbox(image, index)}
-                className="relative aspect-square bg-gradient-to-br from-primary-600 to-primary-800 rounded-2xl overflow-hidden cursor-pointer group"
-              >
-                {/* Placeholder for actual images */}
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-white/30 text-6xl font-bold">S</span>
-                </div>
-                
-                {/* Overlay */}
-                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-all duration-300 flex items-end">
-                  <div className="p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
-                    <h3 className="text-white font-semibold text-sm line-clamp-2">{image.title}</h3>
-                    <span className="text-white/70 text-xs">{image.category}</span>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-16">
+              <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {filteredImages.map((image, index) => (
+                <div
+                  key={image.id}
+                  onClick={() => openLightbox(image, index)}
+                  className="relative aspect-square bg-gray-200 rounded-2xl overflow-hidden cursor-pointer group"
+                >
+                  {image.image_url ? (
+                    <img 
+                      src={image.image_url} 
+                      alt={image.title}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-primary-600 to-primary-800">
+                      <span className="text-white/30 text-6xl font-bold">S</span>
+                    </div>
+                  )}
+                  
+                  {/* Overlay */}
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-all duration-300 flex items-end">
+                    <div className="p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
+                      <h3 className="text-white font-semibold text-sm line-clamp-2">{image.title}</h3>
+                      <span className="text-white/70 text-xs">{image.category}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
 
-          {filteredImages.length === 0 && (
+          {!isLoading && filteredImages.length === 0 && (
             <div className="text-center py-16">
               <p className="text-gray-500">No images found in this category.</p>
             </div>
@@ -213,9 +168,17 @@ export default function GalleryPage() {
 
           {/* Image */}
           <div className="max-w-4xl mx-auto px-16">
-            <div className="aspect-video bg-gradient-to-br from-primary-600 to-primary-800 rounded-2xl flex items-center justify-center mb-6">
-              <span className="text-white/30 text-9xl font-bold">S</span>
-            </div>
+            {selectedImage.image_url ? (
+              <img 
+                src={selectedImage.image_url} 
+                alt={selectedImage.title}
+                className="max-h-[70vh] mx-auto rounded-2xl mb-6"
+              />
+            ) : (
+              <div className="aspect-video bg-gradient-to-br from-primary-600 to-primary-800 rounded-2xl flex items-center justify-center mb-6">
+                <span className="text-white/30 text-9xl font-bold">S</span>
+              </div>
+            )}
             <div className="text-center">
               <h2 className="text-white text-xl font-semibold mb-2">{selectedImage.title}</h2>
               <p className="text-white/70">{selectedImage.description}</p>
