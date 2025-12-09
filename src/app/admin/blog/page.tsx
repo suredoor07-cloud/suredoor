@@ -1,68 +1,57 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Plus, Search, Edit, Trash2, Eye, MoreVertical, Calendar, Tag } from 'lucide-react'
-
-// Sample blog posts data
-const initialPosts = [
-  {
-    id: '1',
-    title: 'Annual Community Outreach Program 2024',
-    slug: 'community-outreach-2024',
-    excerpt: 'Our annual community outreach program brought hope and resources to over 500 families.',
-    category: 'Events',
-    status: 'published',
-    author: 'Admin',
-    date: '2024-12-01',
-  },
-  {
-    id: '2',
-    title: 'Youth Empowerment: 50 Graduates Complete Skill Training',
-    slug: 'youth-empowerment-success',
-    excerpt: 'Celebrating the successful completion of our skill acquisition program.',
-    category: 'Success Stories',
-    status: 'published',
-    author: 'Admin',
-    date: '2024-11-15',
-  },
-  {
-    id: '3',
-    title: 'Women\'s Health Seminar Reaches 200 Participants',
-    slug: 'women-health-seminar',
-    excerpt: 'Our Women Department organized a comprehensive health seminar.',
-    category: 'Programs',
-    status: 'published',
-    author: 'Admin',
-    date: '2024-11-01',
-  },
-  {
-    id: '4',
-    title: 'New Partnership with Lagos State Government',
-    slug: 'partnership-announcement',
-    excerpt: 'We are excited to announce a new partnership.',
-    category: 'Announcements',
-    status: 'draft',
-    author: 'Admin',
-    date: '2024-10-20',
-  },
-]
+import { Plus, Search, Edit, Trash2, Eye, Calendar, Tag, Loader2 } from 'lucide-react'
+import { blogService, BlogPost } from '@/lib/supabase'
 
 export default function BlogManagement() {
-  const [posts, setPosts] = useState(initialPosts)
+  const [posts, setPosts] = useState<BlogPost[]>([])
+  const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
 
+  useEffect(() => {
+    loadPosts()
+  }, [])
+
+  const loadPosts = async () => {
+    try {
+      const data = await blogService.getAll()
+      setPosts(data || [])
+    } catch (error) {
+      console.error('Error loading posts:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   const filteredPosts = posts.filter(post => {
     const matchesSearch = post.title.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesStatus = filterStatus === 'all' || post.status === filterStatus
+    const matchesStatus = filterStatus === 'all' || 
+      (filterStatus === 'published' && post.published) ||
+      (filterStatus === 'draft' && !post.published)
     return matchesSearch && matchesStatus
   })
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm('Are you sure you want to delete this post?')) {
-      setPosts(posts.filter(post => post.id !== id))
+      try {
+        await blogService.delete(id)
+        setPosts(posts.filter(post => post.id !== id))
+      } catch (error) {
+        console.error('Error deleting post:', error)
+        alert('Error deleting post')
+      }
     }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
+      </div>
+    )
   }
 
   return (
@@ -137,17 +126,17 @@ export default function BlogManagement() {
                   </td>
                   <td className="px-6 py-4">
                     <span className={`inline-flex px-2.5 py-1 rounded-full text-sm font-medium ${
-                      post.status === 'published'
+                      post.published
                         ? 'bg-green-100 text-green-700'
                         : 'bg-yellow-100 text-yellow-700'
                     }`}>
-                      {post.status === 'published' ? 'Published' : 'Draft'}
+                      {post.published ? 'Published' : 'Draft'}
                     </span>
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-1 text-sm text-gray-500">
                       <Calendar className="w-4 h-4" />
-                      {new Date(post.date).toLocaleDateString()}
+                      {new Date(post.created_at).toLocaleDateString()}
                     </div>
                   </td>
                   <td className="px-6 py-4">

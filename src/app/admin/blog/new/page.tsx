@@ -1,30 +1,34 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Save, Eye, Image, Bold, Italic, List, Link as LinkIcon } from 'lucide-react'
+import { ArrowLeft, Save, Eye, Image, Bold, Italic, List, Link as LinkIcon, X, Upload } from 'lucide-react'
+import { blogService, storageService } from '@/lib/supabase'
 
 const categories = ['Events', 'Success Stories', 'Programs', 'Announcements', 'Fundraising', 'Community']
 
 export default function NewBlogPost() {
   const router = useRouter()
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isUploading, setIsUploading] = useState(false)
+  const [previewUrl, setPreviewUrl] = useState('')
   const [formData, setFormData] = useState({
     title: '',
     slug: '',
     excerpt: '',
     content: '',
     category: '',
-    featuredImage: '',
-    status: 'draft',
+    featured_image: '',
+    published: false,
   })
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target
     setFormData(prev => ({
       ...prev,
-      [name]: value,
+      [name]: name === 'published' ? value === 'published' : value,
       // Auto-generate slug from title
       ...(name === 'title' && {
         slug: value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
@@ -32,18 +36,62 @@ export default function NewBlogPost() {
     }))
   }
 
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file')
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      alert('File size must be less than 5MB')
+      return
+    }
+
+    setIsUploading(true)
+    setPreviewUrl(URL.createObjectURL(file))
+
+    try {
+      const imageUrl = await storageService.uploadImage(file, 'gallery')
+      setFormData(prev => ({ ...prev, featured_image: imageUrl }))
+    } catch (error) {
+      console.error('Error uploading image:', error)
+      alert('Error uploading image. Please try again or use a URL.')
+      setPreviewUrl('')
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    if (!formData.title || !formData.excerpt || !formData.content) {
+      alert('Please fill in all required fields')
+      return
+    }
+
     setIsSubmitting(true)
 
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000))
-
-    // In production, this would save to Supabase
-    console.log('Saving post:', formData)
-
-    setIsSubmitting(false)
-    router.push('/admin/blog')
+    try {
+      await blogService.create({
+        title: formData.title,
+        slug: formData.slug || formData.title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+        excerpt: formData.excerpt,
+        content: formData.content,
+        category: formData.category,
+        featured_image: formData.featured_image,
+        published: formData.published,
+        author: 'Admin',
+      })
+      router.push('/admin/blog')
+    } catch (error) {
+      console.error('Error creating post:', error)
+      alert('Error creating post. Please try again.')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -177,13 +225,13 @@ export default function NewBlogPost() {
             
             <div className="space-y-4">
               <div>
-                <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="published" className="block text-sm font-medium text-gray-700 mb-2">
                   Status
                 </label>
                 <select
-                  id="status"
-                  name="status"
-                  value={formData.status}
+                  id="published"
+                  name="published"
+                  value={formData.published ? 'published' : 'draft'}
                   onChange={handleChange}
                   className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 >
@@ -232,24 +280,28 @@ export default function NewBlogPost() {
           <div className="bg-white rounded-2xl p-6 shadow-sm">
             <h3 className="font-semibold text-gray-900 mb-4">Featured Image</h3>
             
-            <div className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center">
-              <Image className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-              <p className="text-sm text-gray-500 mb-2">Drag and drop an image, or</p>
-              <button
-                type="button"
-                className="text-primary-600 hover:text-primary-700 font-medium text-sm"
-              >
-                Browse files
-              </button>
+            <input type="file" ref={fileInputRef} accept="image/*" onChange={handleFileSelect} className="hidden" />
+            
+            <div 
+              onClick={() => fileInputRef.current?.click()}
+              className="border-2 border-dashed border-gray-200 rounded-xl p-6 text-center cursor-pointer hover:border-primary-400"
+            >
+              {previewUrl || formData.featured_image ? (
+                <img src={previewUrl || formData.featured_image} alt="Preview" className="max-h-32 mx-auto rounded-lg" />
+              ) : (
+                <>
+                  <Upload className="w-10 h-10 text-gray-300 mx-auto mb-2" />
+                  <p className="text-sm text-gray-500">{isUploading ? 'Uploading...' : 'Click to upload'}</p>
+                </>
+              )}
             </div>
             
             <input
               type="text"
-              id="featuredImage"
-              name="featuredImage"
-              value={formData.featuredImage}
+              name="featured_image"
+              value={formData.featured_image}
               onChange={handleChange}
-              className="w-full mt-4 px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
+              className="w-full mt-4 px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
               placeholder="Or enter image URL"
             />
           </div>

@@ -1,61 +1,30 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Plus, Search, Edit, Trash2, Eye, Calendar, Users } from 'lucide-react'
-
-const initialPrograms = [
-  {
-    id: '1',
-    title: 'Public Enlightenment Department',
-    slug: 'public-enlightenment',
-    description: 'Sensitizing people on topical issues through Seminars, Workshops, and Conferences.',
-    department: 'public_enlightenment',
-    status: 'active',
-    date: '1988-01-01',
-  },
-  {
-    id: '2',
-    title: 'Women Department',
-    slug: 'women',
-    description: 'Creating awareness amongst women on issues affecting the female folk.',
-    department: 'women',
-    status: 'active',
-    date: '1995-01-01',
-  },
-  {
-    id: '3',
-    title: 'Youth Department',
-    slug: 'youth',
-    description: 'Programmes that enhance youth\'s overall development.',
-    department: 'youth',
-    status: 'active',
-    date: '2000-01-01',
-  },
-  {
-    id: '4',
-    title: 'Skill Acquisition Training',
-    slug: 'skill-acquisition',
-    description: 'Training unemployed youths with marketable skills.',
-    department: 'youth',
-    status: 'active',
-    date: '2000-06-01',
-  },
-  {
-    id: '5',
-    title: 'Health Awareness Campaign',
-    slug: 'health-awareness',
-    description: 'Reproductive health education and wellness programs.',
-    department: 'women',
-    status: 'active',
-    date: '2010-03-01',
-  },
-]
+import { Plus, Search, Edit, Trash2, Eye, Loader2 } from 'lucide-react'
+import { programsService, Program } from '@/lib/supabase'
 
 export default function ProgramsManagement() {
-  const [programs, setPrograms] = useState(initialPrograms)
+  const [programs, setPrograms] = useState<Program[]>([])
+  const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [filterDepartment, setFilterDepartment] = useState('all')
+
+  useEffect(() => {
+    loadPrograms()
+  }, [])
+
+  const loadPrograms = async () => {
+    try {
+      const data = await programsService.getAll()
+      setPrograms(data || [])
+    } catch (error) {
+      console.error('Error loading programs:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   const filteredPrograms = programs.filter(program => {
     const matchesSearch = program.title.toLowerCase().includes(searchQuery.toLowerCase())
@@ -63,10 +32,24 @@ export default function ProgramsManagement() {
     return matchesSearch && matchesDepartment
   })
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm('Are you sure you want to delete this program?')) {
-      setPrograms(programs.filter(p => p.id !== id))
+      try {
+        await programsService.delete(id)
+        setPrograms(programs.filter(p => p.id !== id))
+      } catch (error) {
+        console.error('Error deleting program:', error)
+        alert('Error deleting program')
+      }
     }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
+      </div>
+    )
   }
 
   const getDepartmentLabel = (dept: string) => {
@@ -158,11 +141,11 @@ export default function ProgramsManagement() {
                   </td>
                   <td className="px-6 py-4">
                     <span className={`inline-flex px-2.5 py-1 rounded-full text-sm font-medium ${
-                      program.status === 'active'
+                      program.active
                         ? 'bg-green-100 text-green-700'
                         : 'bg-gray-100 text-gray-700'
                     }`}>
-                      {program.status === 'active' ? 'Active' : 'Inactive'}
+                      {program.active ? 'Active' : 'Inactive'}
                     </span>
                   </td>
                   <td className="px-6 py-4">
