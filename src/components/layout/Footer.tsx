@@ -1,7 +1,39 @@
+'use client'
+
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Heart, Mail, Phone, MapPin, Facebook, Twitter, Instagram, Youtube } from 'lucide-react'
+import { settingsService } from '@/lib/supabase'
 
 export default function Footer() {
+  const [settings, setSettings] = useState({
+    contact_email: 'info@suredoorintl.org.ng',
+    contact_phone: '+234 000 000 0000',
+    address: 'Lagos State, Nigeria',
+    facebook_url: '',
+    twitter_url: '',
+    instagram_url: '',
+    youtube_url: '',
+  })
+
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const data = await settingsService.getAll()
+        if (data) {
+          const settingsObj: Record<string, string> = {}
+          data.forEach(item => {
+            settingsObj[item.key] = item.value
+          })
+          setSettings(prev => ({ ...prev, ...settingsObj }))
+        }
+      } catch (error) {
+        console.error('Error loading settings:', error)
+      }
+    }
+    loadSettings()
+  }, [])
+
   return (
     <footer className="bg-gray-900 text-white">
       {/* Main Footer */}
@@ -22,18 +54,39 @@ export default function Footer() {
               A humanitarian body dedicated to restoring the dignity of man through socio-cultural programmes since 1988.
             </p>
             <div className="flex gap-4">
-              <a href="#" className="w-10 h-10 bg-gray-800 hover:bg-primary-600 rounded-full flex items-center justify-center transition-colors">
-                <Facebook className="w-5 h-5" />
-              </a>
-              <a href="#" className="w-10 h-10 bg-gray-800 hover:bg-primary-600 rounded-full flex items-center justify-center transition-colors">
-                <Twitter className="w-5 h-5" />
-              </a>
-              <a href="#" className="w-10 h-10 bg-gray-800 hover:bg-primary-600 rounded-full flex items-center justify-center transition-colors">
-                <Instagram className="w-5 h-5" />
-              </a>
-              <a href="#" className="w-10 h-10 bg-gray-800 hover:bg-primary-600 rounded-full flex items-center justify-center transition-colors">
-                <Youtube className="w-5 h-5" />
-              </a>
+              {settings.facebook_url && (
+                <a href={settings.facebook_url} target="_blank" rel="noopener noreferrer" className="w-10 h-10 bg-gray-800 hover:bg-primary-600 rounded-full flex items-center justify-center transition-colors">
+                  <Facebook className="w-5 h-5" />
+                </a>
+              )}
+              {settings.twitter_url && (
+                <a href={settings.twitter_url} target="_blank" rel="noopener noreferrer" className="w-10 h-10 bg-gray-800 hover:bg-primary-600 rounded-full flex items-center justify-center transition-colors">
+                  <Twitter className="w-5 h-5" />
+                </a>
+              )}
+              {settings.instagram_url && (
+                <a href={settings.instagram_url} target="_blank" rel="noopener noreferrer" className="w-10 h-10 bg-gray-800 hover:bg-primary-600 rounded-full flex items-center justify-center transition-colors">
+                  <Instagram className="w-5 h-5" />
+                </a>
+              )}
+              {settings.youtube_url && (
+                <a href={settings.youtube_url} target="_blank" rel="noopener noreferrer" className="w-10 h-10 bg-gray-800 hover:bg-primary-600 rounded-full flex items-center justify-center transition-colors">
+                  <Youtube className="w-5 h-5" />
+                </a>
+              )}
+              {!settings.facebook_url && !settings.twitter_url && !settings.instagram_url && !settings.youtube_url && (
+                <>
+                  <a href="#" className="w-10 h-10 bg-gray-800 hover:bg-primary-600 rounded-full flex items-center justify-center transition-colors">
+                    <Facebook className="w-5 h-5" />
+                  </a>
+                  <a href="#" className="w-10 h-10 bg-gray-800 hover:bg-primary-600 rounded-full flex items-center justify-center transition-colors">
+                    <Twitter className="w-5 h-5" />
+                  </a>
+                  <a href="#" className="w-10 h-10 bg-gray-800 hover:bg-primary-600 rounded-full flex items-center justify-center transition-colors">
+                    <Instagram className="w-5 h-5" />
+                  </a>
+                </>
+              )}
             </div>
           </div>
 
@@ -113,19 +166,19 @@ export default function Footer() {
               <li className="flex items-start gap-3">
                 <MapPin className="w-5 h-5 text-primary-500 mt-1 flex-shrink-0" />
                 <span className="text-gray-400">
-                  Lagos State, Nigeria
+                  {settings.address}
                 </span>
               </li>
               <li className="flex items-center gap-3">
                 <Phone className="w-5 h-5 text-primary-500 flex-shrink-0" />
-                <a href="tel:+234000000000" className="text-gray-400 hover:text-primary-400 transition-colors">
-                  +234 000 000 0000
+                <a href={`tel:${settings.contact_phone.replace(/\s/g, '')}`} className="text-gray-400 hover:text-primary-400 transition-colors">
+                  {settings.contact_phone}
                 </a>
               </li>
               <li className="flex items-center gap-3">
                 <Mail className="w-5 h-5 text-primary-500 flex-shrink-0" />
-                <a href="mailto:info@suredoorintl.org.ng" className="text-gray-400 hover:text-primary-400 transition-colors">
-                  info@suredoorintl.org.ng
+                <a href={`mailto:${settings.contact_email}`} className="text-gray-400 hover:text-primary-400 transition-colors">
+                  {settings.contact_email}
                 </a>
               </li>
             </ul>

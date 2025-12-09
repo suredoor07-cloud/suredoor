@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Menu, X, Heart, ChevronDown } from 'lucide-react'
+import { settingsService } from '@/lib/supabase'
 
 const navigation = [
   { name: 'Home', href: '/' },
@@ -24,6 +25,25 @@ const navigation = [
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null)
+  const [contactEmail, setContactEmail] = useState('info@suredoorintl.org.ng')
+  const [contactPhone, setContactPhone] = useState('+234 000 000 0000')
+
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const data = await settingsService.getAll()
+        if (data) {
+          data.forEach(item => {
+            if (item.key === 'contact_email') setContactEmail(item.value)
+            if (item.key === 'contact_phone') setContactPhone(item.value)
+          })
+        }
+      } catch (error) {
+        console.error('Error loading settings:', error)
+      }
+    }
+    loadSettings()
+  }, [])
 
   return (
     <header className="bg-white shadow-md sticky top-0 z-50">
@@ -34,12 +54,12 @@ export default function Header() {
             <span>Restoring the dignity of man since 1988</span>
           </div>
           <div className="flex items-center gap-4">
-            <a href="mailto:info@suredoorintl.org.ng" className="hover:text-primary-200 transition-colors">
-              info@suredoorintl.org.ng
+            <a href={`mailto:${contactEmail}`} className="hover:text-primary-200 transition-colors">
+              {contactEmail}
             </a>
             <span className="hidden md:inline">|</span>
-            <a href="tel:+234000000000" className="hidden md:inline hover:text-primary-200 transition-colors">
-              +234 000 000 0000
+            <a href={`tel:${contactPhone.replace(/\s/g, '')}`} className="hidden md:inline hover:text-primary-200 transition-colors">
+              {contactPhone}
             </a>
           </div>
         </div>

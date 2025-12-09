@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Mail, Phone, MapPin, Clock, Send, CheckCircle } from 'lucide-react'
+import { settingsService } from '@/lib/supabase'
 
 export default function ContactPage() {
   const [formData, setFormData] = useState({
@@ -12,6 +13,29 @@ export default function ContactPage() {
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSubmitted, setIsSubmitted] = useState(false)
+  const [settings, setSettings] = useState({
+    contact_email: 'info@suredoorintl.org.ng',
+    contact_phone: '+234 000 000 0000',
+    address: 'Lagos State, Nigeria',
+  })
+
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const data = await settingsService.getAll()
+        if (data) {
+          const settingsObj: Record<string, string> = {}
+          data.forEach(item => {
+            settingsObj[item.key] = item.value
+          })
+          setSettings(prev => ({ ...prev, ...settingsObj }))
+        }
+      } catch (error) {
+        console.error('Error loading settings:', error)
+      }
+    }
+    loadSettings()
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -71,7 +95,7 @@ export default function ContactPage() {
                   <div>
                     <h3 className="font-semibold text-gray-900 mb-1">Address</h3>
                     <p className="text-gray-600">
-                      Lagos State, Nigeria
+                      {settings.address}
                     </p>
                   </div>
                 </div>
@@ -82,8 +106,8 @@ export default function ContactPage() {
                   </div>
                   <div>
                     <h3 className="font-semibold text-gray-900 mb-1">Phone</h3>
-                    <a href="tel:+234000000000" className="text-gray-600 hover:text-primary-600 transition-colors">
-                      +234 000 000 0000
+                    <a href={`tel:${settings.contact_phone.replace(/\s/g, '')}`} className="text-gray-600 hover:text-primary-600 transition-colors">
+                      {settings.contact_phone}
                     </a>
                   </div>
                 </div>
@@ -94,8 +118,8 @@ export default function ContactPage() {
                   </div>
                   <div>
                     <h3 className="font-semibold text-gray-900 mb-1">Email</h3>
-                    <a href="mailto:info@suredoorintl.org.ng" className="text-gray-600 hover:text-primary-600 transition-colors">
-                      info@suredoorintl.org.ng
+                    <a href={`mailto:${settings.contact_email}`} className="text-gray-600 hover:text-primary-600 transition-colors">
+                      {settings.contact_email}
                     </a>
                   </div>
                 </div>
