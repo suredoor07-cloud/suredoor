@@ -1,81 +1,66 @@
 'use client'
 
-import { useState } from 'react'
-import { Heart, TrendingUp, Calendar, Search, Download, Eye } from 'lucide-react'
-
-const donations = [
-  {
-    id: '1',
-    donor: 'Anonymous',
-    email: 'hidden@email.com',
-    amount: 50000,
-    type: 'one-time',
-    date: '2024-12-08T10:30:00',
-    message: 'Keep up the good work!',
-    anonymous: true,
-  },
-  {
-    id: '2',
-    donor: 'Chinedu Okafor',
-    email: 'chinedu.o@email.com',
-    amount: 100000,
-    type: 'monthly',
-    date: '2024-12-07T14:15:00',
-    message: 'Happy to support your mission.',
-    anonymous: false,
-  },
-  {
-    id: '3',
-    donor: 'Fatima Ibrahim',
-    email: 'fatima.i@email.com',
-    amount: 25000,
-    type: 'one-time',
-    date: '2024-12-06T09:45:00',
-    message: '',
-    anonymous: false,
-  },
-  {
-    id: '4',
-    donor: 'Corporate Donor Ltd',
-    email: 'csr@corporate.com',
-    amount: 500000,
-    type: 'one-time',
-    date: '2024-12-05T16:20:00',
-    message: 'Annual CSR contribution for youth programs.',
-    anonymous: false,
-  },
-  {
-    id: '5',
-    donor: 'Anonymous',
-    email: 'hidden@email.com',
-    amount: 10000,
-    type: 'monthly',
-    date: '2024-12-04T11:00:00',
-    message: '',
-    anonymous: true,
-  },
-]
-
-const stats = [
-  { label: 'Total Donations', value: '₦2,850,000', change: '+23%', icon: Heart },
-  { label: 'This Month', value: '₦685,000', change: '+15%', icon: TrendingUp },
-  { label: 'Monthly Donors', value: '12', change: '+3', icon: Calendar },
-]
+import { useState, useEffect } from 'react'
+import { Heart, TrendingUp, Calendar, Search, Download, Eye, Loader2 } from 'lucide-react'
+import { donationsService, Donation } from '@/lib/supabase'
 
 export default function DonationsPage() {
+  const [donations, setDonations] = useState<Donation[]>([])
+  const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [filterType, setFilterType] = useState('all')
-  const [selectedDonation, setSelectedDonation] = useState<typeof donations[0] | null>(null)
+  const [selectedDonation, setSelectedDonation] = useState<Donation | null>(null)
+
+  useEffect(() => {
+    loadDonations()
+  }, [])
+
+  const loadDonations = async () => {
+    try {
+      const data = await donationsService.getAll()
+      setDonations(data)
+    } catch (error) {
+      console.error('Error loading donations:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // Calculate stats
+  const totalAmount = donations.reduce((sum, d) => sum + d.amount, 0)
+  const thisMonth = new Date().getMonth()
+  const thisYear = new Date().getFullYear()
+  const monthlyTotal = donations
+    .filter(d => {
+      const date = new Date(d.created_at)
+      return date.getMonth() === thisMonth && date.getFullYear() === thisYear
+    })
+    .reduce((sum, d) => sum + d.amount, 0)
+  const monthlyDonors = donations.filter(d => d.donation_type === 'monthly').length
+
+  const stats = [
+    { label: 'Total Donations', value: `₦${totalAmount.toLocaleString()}`, icon: Heart },
+    { label: 'This Month', value: `₦${monthlyTotal.toLocaleString()}`, icon: TrendingUp },
+    { label: 'Monthly Donors', value: monthlyDonors.toString(), icon: Calendar },
+  ]
 
   const filteredDonations = donations.filter(donation => {
     const matchesSearch = 
-      donation.donor.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      donation.email.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesType = filterType === 'all' || donation.type === filterType
+      (donation.donor_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (donation.donor_email || '').toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesType = filterType === 'all' || donation.donation_type === filterType
     return matchesSearch && matchesType
   })
 
-  const totalAmount = filteredDonations.reduce((sum, d) => sum + d.amount, 0)
+  const filteredTotal = filteredDonations.reduce((sum, d) => sum + d.amount, 0)
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -99,7 +84,6 @@ export default function DonationsPage() {
               <div>
                 <p className="text-sm text-gray-500">{stat.label}</p>
                 <p className="text-2xl font-bold text-gray-900 mt-1">{stat.value}</p>
-                <p className="text-sm text-green-600 mt-1">{stat.change} from last month</p>
               </div>
               <div className="w-12 h-12 bg-primary-100 rounded-xl flex items-center justify-center">
                 <stat.icon className="w-6 h-6 text-primary-600" />
@@ -153,10 +137,10 @@ export default function DonationsPage() {
                   <td className="px-6 py-4">
                     <div>
                       <p className="font-medium text-gray-900">
-                        {donation.anonymous ? 'Anonymous' : donation.donor}
+                        {donation.anonymous ? 'Anonymous' : donation.donor_name}
                       </p>
                       {!donation.anonymous && (
-                        <p className="text-sm text-gray-500">{donation.email}</p>
+                        <p className="text-sm text-gray-500">{donation.donor_email}</p>
                       )}
                     </div>
                   </td>
@@ -167,17 +151,17 @@ export default function DonationsPage() {
                   </td>
                   <td className="px-6 py-4">
                     <span className={`inline-flex px-2.5 py-1 rounded-full text-sm font-medium ${
-                      donation.type === 'monthly'
+                      donation.donation_type === 'monthly'
                         ? 'bg-purple-100 text-purple-700'
                         : 'bg-blue-100 text-blue-700'
                     }`}>
-                      {donation.type === 'monthly' ? 'Monthly' : 'One-time'}
+                      {donation.donation_type === 'monthly' ? 'Monthly' : 'One-time'}
                     </span>
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-1 text-sm text-gray-500">
                       <Calendar className="w-4 h-4" />
-                      {new Date(donation.date).toLocaleDateString()}
+                      {new Date(donation.created_at).toLocaleDateString()}
                     </div>
                   </td>
                   <td className="px-6 py-4">
@@ -198,7 +182,7 @@ export default function DonationsPage() {
               <tr>
                 <td className="px-6 py-4 font-semibold text-gray-900">Total</td>
                 <td className="px-6 py-4 font-bold text-primary-600">
-                  ₦{totalAmount.toLocaleString()}
+                  ₦{filteredTotal.toLocaleString()}
                 </td>
                 <td colSpan={3}></td>
               </tr>
@@ -231,14 +215,14 @@ export default function DonationsPage() {
               <div>
                 <p className="text-sm text-gray-500">Donor</p>
                 <p className="font-medium text-gray-900">
-                  {selectedDonation.anonymous ? 'Anonymous' : selectedDonation.donor}
+                  {selectedDonation.anonymous ? 'Anonymous' : selectedDonation.donor_name}
                 </p>
               </div>
               
               {!selectedDonation.anonymous && (
                 <div>
                   <p className="text-sm text-gray-500">Email</p>
-                  <p className="font-medium text-gray-900">{selectedDonation.email}</p>
+                  <p className="font-medium text-gray-900">{selectedDonation.donor_email}</p>
                 </div>
               )}
               
@@ -251,13 +235,13 @@ export default function DonationsPage() {
               
               <div>
                 <p className="text-sm text-gray-500">Type</p>
-                <p className="font-medium text-gray-900 capitalize">{selectedDonation.type}</p>
+                <p className="font-medium text-gray-900 capitalize">{selectedDonation.donation_type}</p>
               </div>
               
               <div>
                 <p className="text-sm text-gray-500">Date</p>
                 <p className="font-medium text-gray-900">
-                  {new Date(selectedDonation.date).toLocaleString()}
+                  {new Date(selectedDonation.created_at).toLocaleString()}
                 </p>
               </div>
               

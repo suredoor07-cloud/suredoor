@@ -1,61 +1,30 @@
 'use client'
 
-import { useState } from 'react'
-import { Mail, MailOpen, Trash2, Reply, Search, Filter } from 'lucide-react'
-
-const initialMessages = [
-  {
-    id: '1',
-    name: 'John Adeyemi',
-    email: 'john.adeyemi@email.com',
-    subject: 'Partnership Inquiry',
-    message: 'Hello, I represent a corporate organization interested in partnering with Suredoor International for our CSR initiatives. We would like to discuss potential collaboration opportunities.',
-    read: false,
-    date: '2024-12-08T10:30:00',
-  },
-  {
-    id: '2',
-    name: 'Mary Okonkwo',
-    email: 'mary.o@email.com',
-    subject: 'Volunteer Application',
-    message: 'I am a university student looking to volunteer with your organization during the upcoming holiday season. Please let me know how I can get involved.',
-    read: false,
-    date: '2024-12-07T14:15:00',
-  },
-  {
-    id: '3',
-    name: 'Emmanuel Peters',
-    email: 'emmanuel.p@email.com',
-    subject: 'Donation Receipt Request',
-    message: 'I made a donation last week and would like to request an official receipt for tax purposes. My donation reference is DON-2024-1234.',
-    read: true,
-    date: '2024-12-06T09:45:00',
-  },
-  {
-    id: '4',
-    name: 'Grace Adekunle',
-    email: 'grace.a@email.com',
-    subject: 'Program Information',
-    message: 'I would like more information about your youth empowerment programs. My community has many young people who could benefit from skill acquisition training.',
-    read: true,
-    date: '2024-12-05T16:20:00',
-  },
-  {
-    id: '5',
-    name: 'David Obi',
-    email: 'david.obi@email.com',
-    subject: 'Media Coverage Request',
-    message: 'I am a journalist with The Guardian Nigeria. We would like to feature Suredoor International in our upcoming series on impactful NGOs. Please contact me to arrange an interview.',
-    read: false,
-    date: '2024-12-04T11:00:00',
-  },
-]
+import { useState, useEffect } from 'react'
+import { Mail, MailOpen, Trash2, Reply, Search, Loader2 } from 'lucide-react'
+import { messagesService, ContactMessage } from '@/lib/supabase'
 
 export default function MessagesPage() {
-  const [messages, setMessages] = useState(initialMessages)
-  const [selectedMessage, setSelectedMessage] = useState<typeof initialMessages[0] | null>(null)
+  const [messages, setMessages] = useState<ContactMessage[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [selectedMessage, setSelectedMessage] = useState<ContactMessage | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [filterRead, setFilterRead] = useState('all')
+
+  useEffect(() => {
+    loadMessages()
+  }, [])
+
+  const loadMessages = async () => {
+    try {
+      const data = await messagesService.getAll()
+      setMessages(data)
+    } catch (error) {
+      console.error('Error loading messages:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   const filteredMessages = messages.filter(msg => {
     const matchesSearch = 
@@ -68,25 +37,43 @@ export default function MessagesPage() {
     return matchesSearch && matchesFilter
   })
 
-  const handleSelectMessage = (message: typeof initialMessages[0]) => {
+  const handleSelectMessage = async (message: ContactMessage) => {
     setSelectedMessage(message)
     if (!message.read) {
-      setMessages(messages.map(m => 
-        m.id === message.id ? { ...m, read: true } : m
-      ))
+      try {
+        await messagesService.markAsRead(message.id)
+        setMessages(messages.map(m => 
+          m.id === message.id ? { ...m, read: true } : m
+        ))
+      } catch (error) {
+        console.error('Error marking message as read:', error)
+      }
     }
   }
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm('Are you sure you want to delete this message?')) {
-      setMessages(messages.filter(m => m.id !== id))
-      if (selectedMessage?.id === id) {
-        setSelectedMessage(null)
+      try {
+        await messagesService.delete(id)
+        setMessages(messages.filter(m => m.id !== id))
+        if (selectedMessage?.id === id) {
+          setSelectedMessage(null)
+        }
+      } catch (error) {
+        console.error('Error deleting message:', error)
       }
     }
   }
 
   const unreadCount = messages.filter(m => !m.read).length
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -156,7 +143,7 @@ export default function MessagesPage() {
                         {message.name}
                       </p>
                       <span className="text-xs text-gray-400 flex-shrink-0">
-                        {new Date(message.date).toLocaleDateString()}
+                        {new Date(message.created_at).toLocaleDateString()}
                       </span>
                     </div>
                     <p className={`text-sm truncate ${message.read ? 'text-gray-500' : 'text-gray-700 font-medium'}`}>
@@ -189,7 +176,7 @@ export default function MessagesPage() {
                     From: {selectedMessage.name} ({selectedMessage.email})
                   </p>
                   <p className="text-sm text-gray-400 mt-1">
-                    {new Date(selectedMessage.date).toLocaleString()}
+                    {new Date(selectedMessage.created_at).toLocaleString()}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
