@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Eye, EyeOff, Lock, Mail, AlertCircle } from 'lucide-react'
+import { settingsService } from '@/lib/supabase'
 
 export default function AdminLoginPage() {
   const router = useRouter()
@@ -13,22 +14,42 @@ export default function AdminLoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [adminCredentials, setAdminCredentials] = useState({
+    email: 'admin@suredoorintl.org.ng',
+    password: 'Paxxword321##',
+  })
+
+  useEffect(() => {
+    const loadCredentials = async () => {
+      try {
+        const data = await settingsService.getAll()
+        if (data) {
+          data.forEach(item => {
+            if (item.key === 'admin_email') setAdminCredentials(prev => ({ ...prev, email: item.value }))
+            if (item.key === 'admin_password') setAdminCredentials(prev => ({ ...prev, password: item.value }))
+          })
+        }
+      } catch (error) {
+        console.error('Error loading credentials:', error)
+      }
+    }
+    loadCredentials()
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
     setIsLoading(true)
 
-    // Simple demo authentication
-    // In production, this would validate against Supabase Auth
-    if (formData.email === 'admin@suredoorintl.org.ng' && formData.password === 'admin123') {
+    // Validate against stored credentials
+    if (formData.email === adminCredentials.email && formData.password === adminCredentials.password) {
       localStorage.setItem('admin_authenticated', 'true')
-      router.push('/admin')
+      // Use window.location for immediate redirect
+      window.location.href = '/admin'
     } else {
       setError('Invalid email or password')
+      setIsLoading(false)
     }
-
-    setIsLoading(false)
   }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -124,15 +145,6 @@ export default function AdminLoginPage() {
               )}
             </button>
           </form>
-
-          {/* Demo Credentials */}
-          <div className="mt-8 p-4 bg-gray-50 rounded-xl">
-            <p className="text-sm text-gray-600 text-center mb-2">Demo Credentials:</p>
-            <div className="text-sm text-gray-500 text-center">
-              <p>Email: <span className="font-mono text-gray-700">admin@suredoorintl.org.ng</span></p>
-              <p>Password: <span className="font-mono text-gray-700">admin123</span></p>
-            </div>
-          </div>
 
           {/* Back to site */}
           <div className="mt-6 text-center">

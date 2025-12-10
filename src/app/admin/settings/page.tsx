@@ -1,12 +1,20 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Save, Globe, Mail, Phone, MapPin, Facebook, Twitter, Instagram, Youtube, Loader2 } from 'lucide-react'
+import { Save, Globe, Mail, Phone, MapPin, Facebook, Twitter, Instagram, Youtube, Loader2, Lock, Eye, EyeOff } from 'lucide-react'
 import { settingsService } from '@/lib/supabase'
 
 export default function SettingsPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const [isChangingPassword, setIsChangingPassword] = useState(false)
+  const [showPasswords, setShowPasswords] = useState({ current: false, new: false, confirm: false })
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  })
+  const [storedPassword, setStoredPassword] = useState('Paxxword321##')
   const [settings, setSettings] = useState({
     site_name: 'Suredoor International Centre for Research and Rehabilitation',
     site_description: 'A humanitarian body dedicated to restoring the dignity of man',
@@ -30,6 +38,7 @@ export default function SettingsPage() {
         const settingsObj: Record<string, string> = {}
         data.forEach(item => {
           settingsObj[item.key] = item.value || ''
+          if (item.key === 'admin_password') setStoredPassword(item.value)
         })
         setSettings(prev => ({ ...prev, ...settingsObj }))
       }
@@ -267,18 +276,105 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {/* Danger Zone */}
-      <div className="bg-white rounded-2xl p-6 shadow-sm border border-red-200">
-        <h2 className="text-lg font-semibold text-red-600 mb-4">Danger Zone</h2>
-        <p className="text-gray-600 text-sm mb-4">
-          These actions are irreversible. Please proceed with caution.
-        </p>
-        <div className="flex flex-wrap gap-4">
-          <button className="px-4 py-2 border border-red-300 text-red-600 rounded-xl hover:bg-red-50 transition-colors">
-            Clear Cache
-          </button>
-          <button className="px-4 py-2 border border-red-300 text-red-600 rounded-xl hover:bg-red-50 transition-colors">
-            Reset Settings
+      {/* Change Password */}
+      <div className="bg-white rounded-2xl p-6 shadow-sm">
+        <h2 className="text-lg font-semibold text-gray-900 mb-6 flex items-center gap-2">
+          <Lock className="w-5 h-5 text-primary-600" />
+          Change Password
+        </h2>
+        
+        <div className="max-w-md space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Current Password</label>
+            <div className="relative">
+              <input
+                type={showPasswords.current ? 'text' : 'password'}
+                value={passwordData.currentPassword}
+                onChange={(e) => setPasswordData(prev => ({ ...prev, currentPassword: e.target.value }))}
+                className="w-full px-4 py-3 pr-12 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                placeholder="Enter current password"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPasswords(prev => ({ ...prev, current: !prev.current }))}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                {showPasswords.current ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              </button>
+            </div>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">New Password</label>
+            <div className="relative">
+              <input
+                type={showPasswords.new ? 'text' : 'password'}
+                value={passwordData.newPassword}
+                onChange={(e) => setPasswordData(prev => ({ ...prev, newPassword: e.target.value }))}
+                className="w-full px-4 py-3 pr-12 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                placeholder="Enter new password"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPasswords(prev => ({ ...prev, new: !prev.new }))}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                {showPasswords.new ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              </button>
+            </div>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Confirm New Password</label>
+            <div className="relative">
+              <input
+                type={showPasswords.confirm ? 'text' : 'password'}
+                value={passwordData.confirmPassword}
+                onChange={(e) => setPasswordData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                className="w-full px-4 py-3 pr-12 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                placeholder="Confirm new password"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPasswords(prev => ({ ...prev, confirm: !prev.confirm }))}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                {showPasswords.confirm ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              </button>
+            </div>
+          </div>
+          
+          <button
+            onClick={async () => {
+              if (passwordData.currentPassword !== storedPassword) {
+                alert('Current password is incorrect')
+                return
+              }
+              if (passwordData.newPassword.length < 6) {
+                alert('New password must be at least 6 characters')
+                return
+              }
+              if (passwordData.newPassword !== passwordData.confirmPassword) {
+                alert('New passwords do not match')
+                return
+              }
+              setIsChangingPassword(true)
+              try {
+                await settingsService.update('admin_password', passwordData.newPassword)
+                setStoredPassword(passwordData.newPassword)
+                setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' })
+                alert('Password changed successfully!')
+              } catch (error) {
+                console.error('Error changing password:', error)
+                alert('Error changing password. Please try again.')
+              } finally {
+                setIsChangingPassword(false)
+              }
+            }}
+            disabled={isChangingPassword || !passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword}
+            className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 disabled:bg-primary-400 text-white font-semibold py-2.5 px-5 rounded-xl transition-colors"
+          >
+            {isChangingPassword ? 'Changing...' : 'Change Password'}
           </button>
         </div>
       </div>
