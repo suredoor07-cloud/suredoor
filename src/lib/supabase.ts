@@ -47,6 +47,7 @@ export interface Donation {
   donor_name: string
   donor_email: string
   amount: number
+  donation_type: 'one-time' | 'monthly'
   message: string
   anonymous: boolean
   created_at: string
