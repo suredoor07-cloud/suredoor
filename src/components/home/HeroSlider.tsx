@@ -7,16 +7,7 @@ import { Heart, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react'
 const slides = [
   {
     id: 1,
-    title: 'Restoring the Dignity of Man',
-    subtitle: 'Serving humanity since 1988',
-    description: 'Suredoor International Centre for Research and Rehabilitation is a humanitarian body dedicated to redirecting members of the public from destructive paths to purpose living.',
-    image: 'https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80',
-    cta: { text: 'Donate Now', href: '/donate', icon: Heart },
-    secondaryCta: { text: 'Learn More', href: '/about' },
-  },
-  {
-    id: 2,
-    title: 'Empowering Youth for Tomorrow',
+    title: 'Empowering Youth for Tomorrow Challenges',
     subtitle: 'Youth Development Programs',
     description: 'We draw up programmes that enhance youth\'s overall development to meet their moral, educational and social needs, redirecting their energy to purpose driven life.',
     image: 'https://images.unsplash.com/photo-1529390079861-591de354faf5?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80',
@@ -24,11 +15,20 @@ const slides = [
     secondaryCta: { text: 'Get Involved', href: '/contact' },
   },
   {
+    id: 2,
+    title: 'Restoring the Dignity of Human-kind',
+    subtitle: 'Serving humanity since 1988',
+    description: 'Suredoor International Centre for Research and Rehabilitation is a humanitarian body dedicated to redirecting members of the public from destructive paths to purpose living.',
+    image: 'https://images.unsplash.com/photo-1542810634-71277d95dcbb?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80',
+    cta: { text: 'Donate Now', href: '/donate', icon: Heart },
+    secondaryCta: { text: 'Learn More', href: '/about' },
+  },
+  {
     id: 3,
     title: 'Uplifting Women & Families',
     subtitle: 'Women Empowerment Initiative',
     description: 'Creating awareness amongst women on issues affecting the female folk - from family affairs, reproductive health education, skill acquisition to economic matters.',
-    image: 'https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80',
+    image: 'https://images.unsplash.com/photo-1531123897727-8f129e1688ce?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80',
     cta: { text: 'Support Us', href: '/donate', icon: Heart },
     secondaryCta: { text: 'Learn More', href: '/programs/women' },
   },
@@ -122,7 +122,7 @@ export default function HeroSlider() {
             >
               {slide.title.split(' ').map((word, i) => (
                 <span key={i}>
-                  {word === 'Dignity' || word === 'Youth' || word === 'Women' || word === 'Communities' ? (
+                  {word === 'Dignity' || word === 'Youth' || word === 'Women' || word === 'Communities' || word === 'Human-kind' || word === 'Challenges' ? (
                     <span className="text-secondary-400">{word}</span>
                   ) : (
                     word

@@ -71,7 +71,7 @@ export default function Header() {
         <div className="flex items-center justify-between">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-3">
-            <div className="w-14 h-14 relative flex-shrink-0">
+            <div className="w-16 h-16 relative flex-shrink-0">
               <img 
                 src="/logo.png" 
                 alt="Suredoor Logo"
@@ -79,8 +79,8 @@ export default function Header() {
               />
             </div>
             <div>
-              <h1 className="text-xl md:text-2xl font-extrabold text-primary-700 leading-tight tracking-tight">Suredoor</h1>
-              <p className="text-sm font-semibold text-gray-700">International Centre</p>
+              <h1 className="text-2xl md:text-3xl font-black text-primary-700 leading-tight tracking-tight">Suredoor</h1>
+              <p className="text-base font-bold text-gray-800">International Centre</p>
             </div>
           </Link>
 
