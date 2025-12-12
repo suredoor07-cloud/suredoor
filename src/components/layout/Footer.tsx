@@ -42,12 +42,16 @@ export default function Footer() {
           {/* About Section */}
           <div>
             <div className="flex items-center gap-3 mb-6">
-              <div className="w-12 h-12 bg-primary-600 rounded-full flex items-center justify-center">
-                <span className="text-white font-bold text-xl">S</span>
+              <div className="w-14 h-14 bg-white rounded-lg p-1 flex-shrink-0">
+                <img 
+                  src="/logo.png" 
+                  alt="Suredoor Logo"
+                  className="w-full h-full object-contain"
+                />
               </div>
               <div>
-                <h3 className="text-xl font-bold">Suredoor</h3>
-                <p className="text-sm text-gray-400">International Centre</p>
+                <h3 className="text-xl font-extrabold">Suredoor</h3>
+                <p className="text-sm font-semibold text-gray-300">International Centre</p>
               </div>
             </div>
             <p className="text-gray-400 mb-6">

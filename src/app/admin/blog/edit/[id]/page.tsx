@@ -1,114 +1,128 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Save, Eye, Image, Bold, Italic, List, Link as LinkIcon } from 'lucide-react'
+import { ArrowLeft, Save, Eye, Image, Bold, Italic, List, Link as LinkIcon, Loader2, Upload } from 'lucide-react'
+import { blogService, storageService, BlogPost } from '@/lib/supabase'
 
 const categories = ['Events', 'Success Stories', 'Programs', 'Announcements', 'Fundraising', 'Community']
-
-// Sample posts data (in production, this would come from Supabase)
-const samplePosts: Record<string, any> = {
-  '1': {
-    id: '1',
-    title: 'Annual Community Outreach Program 2024',
-    slug: 'community-outreach-2024',
-    excerpt: 'Our annual community outreach program brought hope and resources to over 500 families.',
-    content: 'Our annual community outreach program brought hope and resources to over 500 families in Lagos State. The event featured health screenings, food distribution, and educational materials for children.\n\nVolunteers from across the state came together to make this event a success. We are grateful for the support of our donors and partners who made this possible.',
-    category: 'Events',
-    featuredImage: '',
-    status: 'published',
-  },
-  '2': {
-    id: '2',
-    title: 'Youth Empowerment: 50 Graduates Complete Skill Training',
-    slug: 'youth-empowerment-success',
-    excerpt: 'Celebrating the successful completion of our skill acquisition program.',
-    content: 'We are proud to announce that 50 young people have successfully completed our skill acquisition training program. The graduates received training in various trades including tailoring, computer skills, and small business management.',
-    category: 'Success Stories',
-    featuredImage: '',
-    status: 'published',
-  },
-  '3': {
-    id: '3',
-    title: 'Women\'s Health Seminar Reaches 200 Participants',
-    slug: 'women-health-seminar',
-    excerpt: 'Our Women Department organized a comprehensive health seminar.',
-    content: 'The Women Department successfully organized a health seminar that reached over 200 participants. Topics covered included reproductive health, nutrition, and mental wellness.',
-    category: 'Programs',
-    featuredImage: '',
-    status: 'published',
-  },
-  '4': {
-    id: '4',
-    title: 'New Partnership with Lagos State Government',
-    slug: 'partnership-announcement',
-    excerpt: 'We are excited to announce a new partnership.',
-    content: 'Suredoor International is pleased to announce a new partnership with the Lagos State Government to expand our youth empowerment programs across the state.',
-    category: 'Announcements',
-    featuredImage: '',
-    status: 'draft',
-  },
-}
 
 export default function EditBlogPost() {
   const router = useRouter()
   const params = useParams()
   const postId = params.id as string
+  const fileInputRef = useRef<HTMLInputElement>(null)
   
+  const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [notFound, setNotFound] = useState(false)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string>('')
   const [formData, setFormData] = useState({
     title: '',
     slug: '',
     excerpt: '',
     content: '',
     category: '',
-    featuredImage: '',
-    status: 'draft',
+    featured_image: '',
+    published: false,
   })
 
   useEffect(() => {
-    // Load post data
-    const post = samplePosts[postId]
-    if (post) {
-      setFormData({
-        title: post.title,
-        slug: post.slug,
-        excerpt: post.excerpt,
-        content: post.content,
-        category: post.category,
-        featuredImage: post.featuredImage || '',
-        status: post.status,
-      })
-    }
+    loadPost()
   }, [postId])
+
+  const loadPost = async () => {
+    try {
+      const post = await blogService.getById(postId)
+      if (post) {
+        setFormData({
+          title: post.title || '',
+          slug: post.slug || '',
+          excerpt: post.excerpt || '',
+          content: post.content || '',
+          category: post.category || '',
+          featured_image: post.featured_image || '',
+          published: post.published || false,
+        })
+        if (post.featured_image) {
+          setImagePreview(post.featured_image)
+        }
+      } else {
+        setNotFound(true)
+      }
+    } catch (error) {
+      console.error('Error loading post:', error)
+      setNotFound(true)
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target
     setFormData(prev => ({
       ...prev,
-      [name]: value,
+      [name]: name === 'published' ? value === 'true' : value,
       ...(name === 'title' && {
         slug: value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
       }),
     }))
   }
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      setSelectedFile(file)
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
 
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    try {
+      let imageUrl = formData.featured_image
 
-    // In production, this would save to Supabase
-    console.log('Updating post:', formData)
+      // Upload new image if selected
+      if (selectedFile) {
+        imageUrl = await storageService.uploadImage(selectedFile, 'gallery')
+      }
 
-    setIsSubmitting(false)
-    router.push('/admin/blog')
+      await blogService.update(postId, {
+        title: formData.title,
+        slug: formData.slug,
+        excerpt: formData.excerpt,
+        content: formData.content,
+        category: formData.category,
+        featured_image: imageUrl,
+        published: formData.published,
+      })
+
+      router.push('/admin/blog')
+    } catch (error) {
+      console.error('Error updating post:', error)
+      alert('Error updating post. Please try again.')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
-  if (!samplePosts[postId]) {
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
+      </div>
+    )
+  }
+
+  if (notFound) {
     return (
       <div className="text-center py-12">
         <h1 className="text-2xl font-bold text-gray-900 mb-4">Post Not Found</h1>
@@ -250,18 +264,18 @@ export default function EditBlogPost() {
             
             <div className="space-y-4">
               <div>
-                <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="published" className="block text-sm font-medium text-gray-700 mb-2">
                   Status
                 </label>
                 <select
-                  id="status"
-                  name="status"
-                  value={formData.status}
+                  id="published"
+                  name="published"
+                  value={formData.published.toString()}
                   onChange={handleChange}
                   className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 >
-                  <option value="draft">Draft</option>
-                  <option value="published">Published</option>
+                  <option value="false">Draft</option>
+                  <option value="true">Published</option>
                 </select>
               </div>
               
@@ -305,26 +319,51 @@ export default function EditBlogPost() {
           <div className="bg-white rounded-2xl p-6 shadow-sm">
             <h3 className="font-semibold text-gray-900 mb-4">Featured Image</h3>
             
-            <div className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center">
-              <Image className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-              <p className="text-sm text-gray-500 mb-2">Drag and drop an image, or</p>
-              <button
-                type="button"
-                className="text-primary-600 hover:text-primary-700 font-medium text-sm"
-              >
-                Browse files
-              </button>
-            </div>
-            
             <input
-              type="text"
-              id="featuredImage"
-              name="featuredImage"
-              value={formData.featuredImage}
-              onChange={handleChange}
-              className="w-full mt-4 px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
-              placeholder="Or enter image URL"
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              accept="image/*"
+              className="hidden"
             />
+            
+            {imagePreview ? (
+              <div className="relative mb-4">
+                <img
+                  src={imagePreview}
+                  alt="Preview"
+                  className="w-full h-40 object-cover rounded-xl"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedFile(null)
+                    setImagePreview('')
+                    setFormData(prev => ({ ...prev, featured_image: '' }))
+                  }}
+                  className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600"
+                >
+                  ×
+                </button>
+              </div>
+            ) : (
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center cursor-pointer hover:border-primary-400 transition-colors"
+              >
+                <Upload className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                <p className="text-sm text-gray-500 mb-2">Click to upload an image</p>
+                <p className="text-xs text-gray-400">PNG, JPG up to 5MB</p>
+              </div>
+            )}
+            
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="w-full mt-4 px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              {imagePreview ? 'Change Image' : 'Select Image'}
+            </button>
           </div>
         </div>
       </form>

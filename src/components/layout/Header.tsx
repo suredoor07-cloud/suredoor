@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { Menu, X, Heart, ChevronDown } from 'lucide-react'
 import { settingsService } from '@/lib/supabase'
 
@@ -70,12 +71,16 @@ export default function Header() {
         <div className="flex items-center justify-between">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-primary-600 rounded-full flex items-center justify-center">
-              <span className="text-white font-bold text-xl">S</span>
+            <div className="w-14 h-14 relative flex-shrink-0">
+              <img 
+                src="/logo.png" 
+                alt="Suredoor Logo"
+                className="w-full h-full object-contain"
+              />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-gray-900 leading-tight">Suredoor</h1>
-              <p className="text-xs text-gray-600">International Centre</p>
+              <h1 className="text-xl md:text-2xl font-extrabold text-primary-700 leading-tight tracking-tight">Suredoor</h1>
+              <p className="text-sm font-semibold text-gray-700">International Centre</p>
             </div>
           </Link>
 
