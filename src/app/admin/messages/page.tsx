@@ -10,6 +10,9 @@ export default function MessagesPage() {
   const [selectedMessage, setSelectedMessage] = useState<ContactMessage | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [filterRead, setFilterRead] = useState('all')
+  const [showReplyModal, setShowReplyModal] = useState(false)
+  const [replyData, setReplyData] = useState({ subject: '', message: '' })
+  const [isSendingReply, setIsSendingReply] = useState(false)
 
   useEffect(() => {
     loadMessages()
@@ -62,6 +65,36 @@ export default function MessagesPage() {
       } catch (error) {
         console.error('Error deleting message:', error)
       }
+    }
+  }
+
+  const handleOpenReply = (message: ContactMessage) => {
+    setReplyData({
+      subject: `Re: ${message.subject}`,
+      message: `\n\n---\nOriginal message from ${message.name} (${message.email}):\n${message.message}`
+    })
+    setShowReplyModal(true)
+  }
+
+  const handleSendReply = async () => {
+    if (!selectedMessage) return
+    
+    setIsSendingReply(true)
+    try {
+      // Open default email client with pre-filled data
+      const mailtoLink = `mailto:${selectedMessage.email}?subject=${encodeURIComponent(replyData.subject)}&body=${encodeURIComponent(replyData.message)}`
+      window.location.href = mailtoLink
+      
+      // Close modal after a short delay
+      setTimeout(() => {
+        setShowReplyModal(false)
+        setReplyData({ subject: '', message: '' })
+        setIsSendingReply(false)
+      }, 1000)
+    } catch (error) {
+      console.error('Error sending reply:', error)
+      alert('Failed to open email client. Please try again.')
+      setIsSendingReply(false)
     }
   }
 
@@ -180,13 +213,13 @@ export default function MessagesPage() {
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <a
-                    href={`mailto:${selectedMessage.email}?subject=Re: ${selectedMessage.subject}`}
+                  <button
+                    onClick={() => handleOpenReply(selectedMessage)}
                     className="p-2 text-gray-400 hover:text-primary-600 transition-colors"
                     title="Reply"
                   >
                     <Reply className="w-5 h-5" />
-                  </a>
+                  </button>
                   <button
                     onClick={() => handleDelete(selectedMessage.id)}
                     className="p-2 text-gray-400 hover:text-red-600 transition-colors"
@@ -204,13 +237,13 @@ export default function MessagesPage() {
               </div>
 
               <div className="border-t pt-6">
-                <a
-                  href={`mailto:${selectedMessage.email}?subject=Re: ${selectedMessage.subject}`}
+                <button
+                  onClick={() => handleOpenReply(selectedMessage)}
                   className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white font-semibold py-2.5 px-5 rounded-xl transition-colors"
                 >
                   <Reply className="w-5 h-5" />
                   Reply to Message
-                </a>
+                </button>
               </div>
             </div>
           ) : (
@@ -223,6 +256,89 @@ export default function MessagesPage() {
           )}
         </div>
       </div>
+
+      {/* Reply Modal */}
+      {showReplyModal && selectedMessage && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b sticky top-0 bg-white">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">Reply to Message</h2>
+                  <p className="text-sm text-gray-500 mt-1">To: {selectedMessage.email}</p>
+                </div>
+                <button
+                  onClick={() => setShowReplyModal(false)}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Subject
+                </label>
+                <input
+                  type="text"
+                  value={replyData.subject}
+                  onChange={(e) => setReplyData({ ...replyData, subject: e.target.value })}
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  placeholder="Subject"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Message
+                </label>
+                <textarea
+                  value={replyData.message}
+                  onChange={(e) => setReplyData({ ...replyData, message: e.target.value })}
+                  rows={12}
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
+                  placeholder="Write your reply..."
+                />
+              </div>
+            </div>
+
+            <div className="p-6 border-t bg-gray-50 flex items-center justify-between gap-4">
+              <p className="text-sm text-gray-500">
+                This will open your email client to send the reply.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowReplyModal(false)}
+                  className="px-5 py-2.5 rounded-xl border border-gray-200 hover:bg-gray-100 font-medium transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSendReply}
+                  disabled={isSendingReply || !replyData.subject || !replyData.message}
+                  className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 disabled:bg-primary-400 text-white font-semibold px-5 py-2.5 rounded-xl transition-colors"
+                >
+                  {isSendingReply ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      Sending...
+                    </>
+                  ) : (
+                    <>
+                      <Reply className="w-5 h-5" />
+                      Send Reply
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
