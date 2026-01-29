@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Mail, Phone, MapPin, Clock, Send, CheckCircle } from 'lucide-react'
-import { settingsService } from '@/lib/supabase'
+import { settingsService, messagesService } from '@/lib/supabase'
 
 export default function ContactPage() {
   const [formData, setFormData] = useState({
@@ -41,15 +41,27 @@ export default function ContactPage() {
     e.preventDefault()
     setIsSubmitting(true)
     
-    // Simulate form submission
-    await new Promise(resolve => setTimeout(resolve, 1500))
-    
-    setIsSubmitting(false)
-    setIsSubmitted(true)
-    setFormData({ name: '', email: '', subject: '', message: '' })
-    
-    // Reset success message after 5 seconds
-    setTimeout(() => setIsSubmitted(false), 5000)
+    try {
+      // Save message to Supabase
+      await messagesService.create({
+        name: formData.name,
+        email: formData.email,
+        subject: formData.subject,
+        message: formData.message,
+        read: false,
+      })
+      
+      setIsSubmitted(true)
+      setFormData({ name: '', email: '', subject: '', message: '' })
+      
+      // Reset success message after 5 seconds
+      setTimeout(() => setIsSubmitted(false), 5000)
+    } catch (error) {
+      console.error('Error submitting message:', error)
+      alert('Failed to send message. Please try again.')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
