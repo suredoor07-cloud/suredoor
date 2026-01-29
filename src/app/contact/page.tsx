@@ -48,7 +48,6 @@ export default function ContactPage() {
         email: formData.email,
         subject: formData.subject,
         message: formData.message,
-        read: false,
       })
       
       setIsSubmitted(true)
